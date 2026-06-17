@@ -1,0 +1,1414 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Parcoursup – Quiz interactif</title>
+<style>
+:root {
+  --blue:#1E3A5F; --blue-lt:#B3D1F7; --blue-md:#4A7DB5;
+  --red:#C0392B;  --red-lt:#F7B3B3;
+  --yel:#D4A800;  --yel-lt:#FFF9C4;
+  --gry:#5D6D7E;  --gry-lt:#E0E0E0;
+  --ok:#27AE60;   --wrong:#C0392B;
+  --ink:#1A1A2E;  --bg:#F0F4FA;
+  --r:12px; --sh:0 4px 18px rgba(0,0,0,.13);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--ink);min-height:100vh}
+
+/* HEADER */
+header{background:var(--blue);color:#fff;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;box-shadow:0 2px 10px rgba(0,0,0,.25)}
+header h1{font-size:1.2rem;font-weight:700}
+header p{font-size:.78rem;opacity:.75;margin-top:2px}
+#score-bar{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.13);border-radius:8px;padding:7px 14px;font-size:.88rem}
+#score-bar b{font-size:1.05rem}
+
+/* NAV */
+nav{display:flex;background:#fff;border-bottom:2px solid #D9E4F0;padding:0 24px;gap:4px}
+.tab-btn{padding:12px 26px;border:none;background:none;font-size:.92rem;font-weight:600;color:var(--gry);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;transition:color .2s,border-color .2s}
+.tab-btn:hover{color:var(--blue-md)}
+.tab-btn.active{color:var(--blue);border-bottom-color:var(--blue)}
+
+/* FILTER */
+.filter-bar{display:flex;flex-wrap:wrap;gap:7px;padding:12px 24px;background:#fff;border-bottom:1px solid #E2EAF4;align-items:center}
+.filter-bar label{font-size:.78rem;color:var(--gry);font-weight:700;margin-right:2px}
+.chip{padding:4px 13px;border-radius:20px;border:2px solid transparent;font-size:.76rem;font-weight:600;cursor:pointer;background:#EEF2F8;color:var(--gry);transition:all .15s}
+.chip.active{color:#fff}
+.chip.f-all.active   {background:var(--blue);border-color:var(--blue)}
+.chip.f-blue.active  {background:var(--blue-md);border-color:var(--blue-md)}
+.chip.f-red.active   {background:var(--red);border-color:var(--red)}
+.chip.f-yellow.active{background:var(--yel);border-color:var(--yel)}
+.chip.f-grey.active  {background:var(--gry);border-color:var(--gry)}
+.chip.f-todo.active  {background:#8E44AD;border-color:#8E44AD}
+.reset-btn{margin-left:auto;padding:5px 14px;background:#fff;border:2px solid #D5DDE8;border-radius:8px;font-size:.76rem;font-weight:600;color:var(--gry);cursor:pointer;transition:border-color .15s}
+.reset-btn:hover{border-color:var(--blue);color:var(--blue)}
+#prog{font-size:.74rem;color:var(--gry);margin-left:4px}
+
+/* VIEWS */
+.view{display:none;padding:22px}
+.view.active{display:block}
+
+/* ══════════════════ CARD VIEW ══════════════════ */
+#cards-grid{display:flex;flex-wrap:wrap;gap:18px;justify-content:center}
+
+.card-wrap{width:240px;min-height:360px;perspective:900px;cursor:default;flex-shrink:0;position:relative}
+.card-inner{width:100%;height:100%;position:relative;transform-style:preserve-3d;transition:transform .55s cubic-bezier(.4,0,.2,1)}
+.card-wrap.flipped .card-inner{transform:rotateY(180deg)}
+
+.card-face{
+  position:absolute;width:100%;min-height:360px;
+  backface-visibility:hidden;-webkit-backface-visibility:hidden;
+  border-radius:var(--r);box-shadow:var(--sh);
+  border:3px solid #ccc;display:flex;flex-direction:column;background:#fff
+}
+.card-back-face{transform:rotateY(180deg)}
+
+.card-wrap.col-blue  .card-face{border-color:var(--blue-md)}
+.card-wrap.col-red   .card-face{border-color:var(--red)}
+.card-wrap.col-yellow .card-face{border-color:var(--yel)}
+.card-wrap.col-grey  .card-face{border-color:var(--gry)}
+
+.c-num-badge{position:absolute;top:5px;right:7px;font-size:10px;font-weight:700;color:rgba(0,0,0,.3);pointer-events:none}
+.c-title{text-align:center;font-size:12px;font-weight:700;padding:7px 20px 5px;background:#f2f4f8;color:#333;border-radius:var(--r) var(--r) 0 0}
+.c-theme{font-size:10px;font-weight:600;text-align:center;padding:4px 6px;color:#fff}
+.col-blue  .c-theme{background:#4A7DB5}
+.col-red   .c-theme{background:#C0392B}
+.col-yellow .c-theme{background:#D4A800}
+.col-grey  .c-theme{background:#5D6D7E}
+
+.c-type-badge{font-size:9px;text-align:center;padding:2px 6px;background:rgba(0,0,0,.07);color:#555;letter-spacing:.3px;font-weight:600}
+.c-situation{padding:8px 9px;font-size:11px;line-height:1.45;background:#f9fafc;flex:1;color:#333;overflow-y:auto}
+.c-choices{display:flex;flex-direction:column;flex-shrink:0;border-top:2px solid rgba(0,0,0,.06)}
+.c-choice{
+  padding:7px 8px 7px 26px;font-size:10.5px;line-height:1.35;
+  border-top:1px solid rgba(0,0,0,.06);background:#e8f4fd;cursor:pointer;
+  transition:background .15s;position:relative
+}
+.c-choice::before{
+  content:attr(data-letter);position:absolute;left:7px;top:50%;transform:translateY(-50%);
+  width:14px;height:14px;border-radius:50%;background:rgba(0,0,0,.18);color:#fff;
+  font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;line-height:14px;text-align:center
+}
+.c-choice:hover:not(.locked){background:#c5e4f8}
+.c-choice.correct{background:#d4edda !important;border-left:3px solid var(--ok)}
+.c-choice.correct::before{background:var(--ok)}
+.c-choice.wrong-picked{background:#fde8e8 !important;border-left:3px solid var(--wrong)}
+.c-choice.wrong-picked::before{background:var(--wrong)}
+.c-choice.wrong-shown{background:#f5f5f5 !important;opacity:.6}
+.c-choice.locked{cursor:default}
+
+/* Card type badge pour VF */
+.c-vf-btns{display:flex;border-top:2px solid rgba(0,0,0,.06)}
+.c-vf-btn{flex:1;padding:10px 4px;font-size:12px;font-weight:700;text-align:center;cursor:pointer;transition:background .15s}
+.c-vf-btn.vrai{background:#d4edda;border-right:1px solid rgba(0,0,0,.08)}
+.c-vf-btn.faux{background:#fde8e8}
+.c-vf-btn:hover:not(.locked){filter:brightness(.93)}
+.c-vf-btn.selected-ok{background:var(--ok)!important;color:#fff}
+.c-vf-btn.selected-wrong{background:var(--wrong)!important;color:#fff}
+.c-vf-btn.revealed{opacity:.6;cursor:default}
+.c-vf-btn.locked{cursor:default}
+
+/* Blanks */
+.c-blank-zone{padding:8px 9px;flex:1;display:flex;flex-direction:column;gap:6px;background:#f9fafc}
+.c-blank-item{display:flex;align-items:center;gap:6px;font-size:10.5px;line-height:1.4;color:#333}
+.c-blank-item input{
+  border:2px solid #aac8e8;border-radius:6px;padding:3px 6px;font-size:10.5px;
+  width:80px;outline:none;transition:border-color .15s
+}
+.c-blank-item input:focus{border-color:var(--blue-md)}
+.c-blank-item input.ok{border-color:var(--ok);background:#d4edda}
+.c-blank-item input.err{border-color:var(--wrong);background:#fde8e8}
+.c-blank-submit{margin:6px 9px 8px;padding:6px;background:var(--blue-md);color:#fff;border:none;border-radius:7px;font-size:10.5px;font-weight:700;cursor:pointer;transition:background .15s}
+.c-blank-submit:hover{background:var(--blue)}
+.c-blank-submit:disabled{background:#aaa;cursor:default}
+
+/* Card back */
+.card-back-face{background:#fff}
+.c-back-header{background:var(--blue);color:#fff;text-align:center;font-size:11px;font-weight:700;padding:6px 4px;border-radius:var(--r) var(--r) 0 0}
+.c-back-body{padding:8px 10px;font-size:10.5px;line-height:1.5;flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:6px}
+.back-item{padding:6px 8px;border-radius:7px;font-size:10.5px;line-height:1.4}
+.back-item.ok-item{background:#d4edda;border-left:3px solid var(--ok)}
+.back-item.wrong-item{background:#f5f5f5;opacity:.75}
+.back-item .bi-letter{font-weight:700;margin-right:4px;font-size:10px}
+.c-flip-hint{text-align:center;font-size:9px;color:#aaa;padding:5px;flex-shrink:0;cursor:pointer}
+
+/* Status badge */
+.status-badge{position:absolute;top:4px;left:4px;width:17px;height:17px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;z-index:10;pointer-events:none}
+.status-badge.ok{background:var(--ok);color:#fff}
+.status-badge.wrong{background:var(--wrong);color:#fff}
+
+/* Mark-the-words card */
+.c-mtw-text{padding:8px 10px;font-size:11px;line-height:1.7;flex:1;background:#f9fafc;cursor:pointer;user-select:none}
+.c-mtw-text .w{display:inline;border-radius:3px;padding:1px 2px;transition:background .12s}
+.c-mtw-text .w.clickable:hover{background:#c5e4f8}
+.c-mtw-text .w.selected{background:#aac8e8;font-weight:600}
+.c-mtw-text .w.hit{background:#d4edda;font-weight:600;color:#1a6b30}
+.c-mtw-text .w.miss{background:#fde8e8;font-weight:600;color:#8b0000}
+.c-mtw-text .w.unselected-target{background:#fff3cd;font-weight:600}
+.c-mtw-submit{margin:6px 9px 8px;padding:6px;background:var(--blue-md);color:#fff;border:none;border-radius:7px;font-size:10.5px;font-weight:700;cursor:pointer}
+.c-mtw-submit:hover{background:var(--blue)}
+.c-mtw-submit:disabled{background:#aaa;cursor:default}
+
+/* ══════════════════ LIST VIEW ══════════════════ */
+#list-container{max-width:840px;margin:0 auto;display:flex;flex-direction:column;gap:11px}
+.list-item{background:#fff;border-radius:var(--r);box-shadow:var(--sh);overflow:hidden;border-left:5px solid #ccc}
+.list-item.col-blue  {border-left-color:var(--blue-md)}
+.list-item.col-red   {border-left-color:var(--red)}
+.list-item.col-yellow{border-left-color:var(--yel)}
+.list-item.col-grey  {border-left-color:var(--gry)}
+
+.list-hdr{display:flex;align-items:center;gap:10px;padding:13px 15px;cursor:pointer;user-select:none}
+.l-num{flex-shrink:0;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.82rem;color:#fff}
+.col-blue   .l-num{background:var(--blue-md)}
+.col-red    .l-num{background:var(--red)}
+.col-yellow .l-num{background:var(--yel)}
+.col-grey   .l-num{background:var(--gry)}
+.l-meta{flex:1;min-width:0}
+.l-title{font-weight:700;font-size:.92rem}
+.l-sub{font-size:.75rem;color:var(--gry);margin-top:1px}
+.l-status{flex-shrink:0;font-size:1rem}
+.l-arrow{flex-shrink:0;font-size:.95rem;color:#aaa;transition:transform .2s}
+.list-item.open .l-arrow{transform:rotate(90deg)}
+
+.list-body{display:none;padding:0 15px 15px 53px}
+.list-item.open .list-body{display:block}
+.l-question{font-size:.86rem;line-height:1.5;color:#444;margin-bottom:11px;padding:9px 12px;background:#F5F7FA;border-radius:8px}
+.l-type-label{font-size:.72rem;font-weight:700;color:var(--gry);letter-spacing:.4px;margin-bottom:7px;text-transform:uppercase}
+
+/* List choices */
+.l-choices{display:flex;flex-direction:column;gap:7px;margin-bottom:10px}
+.l-choice{padding:9px 13px 9px 38px;border-radius:8px;border:2px solid #E2EAF4;font-size:.85rem;cursor:pointer;transition:all .15s;display:flex;align-items:flex-start;gap:8px;background:#fff;position:relative}
+.l-choice::before{content:attr(data-letter);position:absolute;left:10px;top:50%;transform:translateY(-50%);width:20px;height:20px;border-radius:50%;background:#E2EAF4;color:var(--gry);font-size:.72rem;font-weight:700;display:flex;align-items:center;justify-content:center;line-height:20px;text-align:center}
+.l-choice:hover:not(.locked){border-color:var(--blue-md);background:#EEF5FF}
+.l-choice.correct{border-color:var(--ok);background:#EAF7EE}
+.l-choice.correct::before{background:var(--ok);color:#fff}
+.l-choice.wrong-picked{border-color:var(--wrong);background:#FDECEA}
+.l-choice.wrong-picked::before{background:var(--wrong);color:#fff}
+.l-choice.wrong-shown{opacity:.55;background:#fafafa}
+.l-choice.locked{cursor:default}
+
+/* List VF */
+.l-vf-btns{display:flex;gap:8px;margin-bottom:10px}
+.l-vf-btn{flex:1;padding:10px;text-align:center;border-radius:8px;border:2px solid #E2EAF4;font-size:.88rem;font-weight:700;cursor:pointer;transition:all .15s}
+.l-vf-btn.vrai{border-color:#27AE60;color:var(--ok)}
+.l-vf-btn.faux{border-color:var(--wrong);color:var(--wrong)}
+.l-vf-btn:hover:not(.locked){filter:brightness(.93)}
+.l-vf-btn.selected-ok{background:var(--ok);color:#fff;border-color:var(--ok)}
+.l-vf-btn.selected-wrong{background:var(--wrong);color:#fff;border-color:var(--wrong)}
+.l-vf-btn.revealed{opacity:.55;cursor:default}
+.l-vf-btn.locked{cursor:default}
+
+/* List blanks */
+.l-blanks{display:flex;flex-direction:column;gap:8px;margin-bottom:10px}
+.l-blank-item{font-size:.86rem;line-height:1.5;color:#444;display:flex;align-items:center;flex-wrap:wrap;gap:6px}
+.l-blank-item input{border:2px solid #aac8e8;border-radius:6px;padding:4px 8px;font-size:.84rem;width:100px;outline:none;transition:border-color .15s}
+.l-blank-item input:focus{border-color:var(--blue-md)}
+.l-blank-item input.ok{border-color:var(--ok);background:#d4edda}
+.l-blank-item input.err{border-color:var(--wrong);background:#fde8e8}
+.l-blank-submit{padding:7px 18px;background:var(--blue-md);color:#fff;border:none;border-radius:8px;font-size:.83rem;font-weight:700;cursor:pointer;margin-bottom:10px}
+.l-blank-submit:hover{background:var(--blue)}
+.l-blank-submit:disabled{background:#aaa;cursor:default}
+
+/* List mark-the-words */
+.l-mtw-text{font-size:.87rem;line-height:1.9;padding:10px 12px;background:#F5F7FA;border-radius:8px;margin-bottom:8px;cursor:pointer;user-select:none}
+.l-mtw-text .w{display:inline;border-radius:3px;padding:1px 3px;transition:background .12s}
+.l-mtw-text .w.clickable:hover{background:#c5e4f8}
+.l-mtw-text .w.selected{background:#aac8e8;font-weight:600}
+.l-mtw-text .w.hit{background:#d4edda;font-weight:600;color:#1a6b30}
+.l-mtw-text .w.miss{background:#fde8e8;font-weight:600;color:#8b0000}
+.l-mtw-text .w.unselected-target{background:#fff3cd;font-weight:600}
+.l-mtw-submit{padding:7px 18px;background:var(--blue-md);color:#fff;border:none;border-radius:8px;font-size:.83rem;font-weight:700;cursor:pointer;margin-bottom:10px}
+.l-mtw-submit:hover{background:var(--blue)}
+.l-mtw-submit:disabled{background:#aaa;cursor:default}
+
+/* Feedbacks */
+.l-feedback{display:none;font-size:.82rem;line-height:1.5;border-radius:8px;padding:9px 12px;margin-top:4px}
+.l-feedback.show{display:block}
+.l-feedback.ok-fb{background:#EAF7EE;border-left:4px solid var(--ok);color:#1E5C30}
+.l-feedback.wrong-fb{background:#FDECEA;border-left:4px solid var(--wrong);color:#7B1010}
+.l-feedback.info-fb{background:#EEF5FF;border-left:4px solid var(--blue-md);color:#1a3a6b}
+
+/* Tags */
+.l-tags{display:flex;gap:5px;flex-wrap:wrap;margin-top:9px}
+.tag{padding:2px 9px;border-radius:12px;font-size:.68rem;font-weight:600;background:#EEF2F8;color:var(--gry)}
+
+/* Empty */
+.empty{text-align:center;padding:60px 20px;color:var(--gry)}
+.empty p{font-size:.95rem;margin-top:7px}
+
+@media(max-width:600px){
+  header{padding:10px 14px}
+  .view{padding:14px 10px}
+  .filter-bar,.nav{padding-left:12px;padding-right:12px}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>🎓 Parcoursup — Quiz interactif</h1>
+    <p>54 questions · Classe de 1re · QCM, Vrai/Faux, Mots à trous, Surligner</p>
+  </div>
+  <div id="score-bar">✅ <b id="s-ok">0</b>&nbsp; ❌ <b id="s-ko">0</b>&nbsp; / <b>54</b></div>
+</header>
+
+<nav>
+  <button class="tab-btn active" data-view="cards">🃏 Cartes</button>
+  <button class="tab-btn" data-view="list">📋 Liste</button>
+</nav>
+
+<div class="filter-bar">
+  <label>Thème :</label>
+  <button class="chip f-all active" data-f="all">Tout</button>
+  <button class="chip f-blue"   data-f="blue">🔵 Formations (1–17)</button>
+  <button class="chip f-red"    data-f="red">🔴 Candidats (18–27)</button>
+  <button class="chip f-yellow" data-f="yellow">🟡 Plate-forme (28–42)</button>
+  <button class="chip f-grey"   data-f="grey">⚪ Vigilance (43–54)</button>
+  <button class="chip f-todo"   data-f="todo">⏳ À répondre</button>
+  <button class="reset-btn" id="reset-btn">🔄 Réinitialiser</button>
+  <span id="prog"></span>
+</div>
+
+<div class="view active" id="view-cards">
+  <div id="cards-grid"></div>
+  <div class="empty" id="ce" style="display:none"><div style="font-size:2.5rem">🔍</div><p>Aucune carte pour ce filtre.</p></div>
+</div>
+
+<div class="view" id="view-list">
+  <div id="list-container"></div>
+  <div class="empty" id="le" style="display:none"><div style="font-size:2.5rem">🔍</div><p>Aucune question pour ce filtre.</p></div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+// QUESTIONS DATA  (type: qcm|vf|blanks|mark)
+// ═══════════════════════════════════════════════
+const QS = [
+{id:1,color:"blue",theme:"Formations",title:"Formations sélectives",type:"qcm",multi:true,
+ q:"Parmi les formations suivantes, lesquelles sont <strong>sélectives</strong> ?",
+ choices:[
+  {t:"BTS (Brevet de technicien supérieur)",ok:true},
+  {t:"BUT (Bachelor universitaire de technologie)",ok:true},
+  {t:"CPGE (Classe préparatoire aux grandes écoles)",ok:true},
+  {t:"Licence",ok:false,fb:"La Licence n'est pas sélective : toutes les candidatures reçues sont classées."},
+  {t:"École d'ingénieur",ok:true},
+ ],tags:["Formations","Sélectivité"]},
+
+{id:2,color:"blue",theme:"Formations",title:"Critères d'analyse",type:"qcm",multi:false,
+ q:"<strong>Qui établit les critères d'analyse des candidatures ?</strong>",
+ choices:[
+  {t:"Les formations",ok:true},
+  {t:"Les candidats",ok:false,fb:"Les candidats ne fixent pas les critères ; ils y répondent."},
+  {t:"La plateforme Parcoursup",ok:false,fb:"Parcoursup est un outil de mise en relation, pas un décideur de critères."},
+ ],tags:["Formations","Procédure"]},
+
+{id:3,color:"blue",theme:"Formations",title:"Qui classe les candidatures ?",type:"qcm",multi:false,
+ q:"<strong>Qui étudie et classe les candidatures ?</strong>",
+ choices:[
+  {t:"Les formations",ok:true},
+  {t:"Le ministère de l'Éducation nationale",ok:false,fb:"Le ministère cadre la procédure mais ne classe pas les dossiers."},
+  {t:"La plateforme Parcoursup",ok:false,fb:"Parcoursup transmet les candidatures mais ne les classe pas."},
+  {t:"Les lycées d'origine des candidats",ok:false,fb:"Les lycées fournissent les bulletins mais ne classent pas les candidatures."},
+ ],tags:["Formations","Procédure"]},
+
+{id:4,color:"blue",theme:"Formations",title:"Critères variables",type:"vf",
+ q:"Pour une même formation, les critères d'examen des vœux <strong>varient-ils d'un établissement à un autre</strong> ?",
+ correct:true,
+ fbTrue:"✔ Oui ! Chaque formation définit ses critères d'examen des vœux de façon autonome.",
+ fbFalse:"✘ En réalité oui : chaque établissement est libre de définir ses propres critères.",
+ tags:["Procédure","Établissements"]},
+
+{id:5,color:"blue",theme:"Formations",title:"Places réservées par bac",type:"qcm",multi:true,
+ q:"Citez les types de formations où il existe des <strong>places réservées à une série de baccalauréat</strong>.",
+ choices:[
+  {t:"BTS",ok:true},
+  {t:"BUT",ok:true},
+  {t:"Licence",ok:false,fb:"La licence ne réserve pas de places selon la série de bac."},
+  {t:"CPGE",ok:false,fb:"La CPGE est sélective mais ne réserve pas de places par série de bac."},
+ ],tags:["Formations","Places réservées"]},
+
+{id:6,color:"blue",theme:"Formations",title:"Licence non-sélective",type:"qcm",multi:true,
+ q:"Comment sont traitées les candidatures dans une <strong>licence non-sélective</strong> ?",
+ choices:[
+  {t:"Toutes les candidatures reçues sont classées, mais l'accès reste conditionné au nombre de places.",ok:true},
+  {t:"Une sectorisation géographique s'applique.",ok:true},
+  {t:"Des groupes de candidats sont formés en fonction de la série de bac.",ok:false,fb:"Ce mécanisme concerne les BTS et BUT, pas les licences."},
+  {t:"Les lycéens sont toujours prioritaires sur les étudiants en réorientation.",ok:false,fb:"Il n'existe pas de priorité automatique selon ce critère."},
+ ],tags:["Formations","Sectorisation"]},
+
+{id:7,color:"blue",theme:"Formations",title:"Admission apprentissage",type:"qcm",multi:false,
+ q:"Que faut-il pour être <strong>admis en apprentissage</strong> ?",
+ choices:[
+  {t:"Signer un contrat avec une entreprise",ok:true},
+  {t:"Obtenir une mention au baccalauréat",ok:false,fb:"Aucune mention spécifique n'est exigée pour l'apprentissage."},
+  {t:"Avoir un avis favorable de son lycée",ok:false,fb:"L'avis du lycée n'est pas requis pour l'apprentissage."},
+  {t:"Passer un entretien avec la formation uniquement",ok:false,fb:"Un entretien peut avoir lieu, mais il faut surtout signer un contrat d'entreprise."},
+ ],tags:["Apprentissage","Procédure"]},
+
+{id:8,color:"blue",theme:"Formations",title:"Descriptif de formation",type:"qcm",multi:false,
+ q:"Pourquoi le descriptif d'une même spécialité <strong>varie-t-il d'un établissement à un autre</strong> ?",
+ choices:[
+  {t:"Ce sont les établissements eux-mêmes qui renseignent leur descriptif.",ok:true},
+  {t:"Parcoursup génère automatiquement un descriptif différent pour chaque établissement.",ok:false,fb:"Parcoursup ne génère aucun descriptif automatiquement."},
+  {t:"Le ministère adapte le descriptif selon les résultats de chaque établissement.",ok:false,fb:"Le ministère n'adapte pas les descriptifs établissement par établissement."},
+ ],tags:["Procédure","Établissements"]},
+
+{id:9,color:"blue",theme:"Formations",title:"Rubriques fiche formation",type:"qcm",multi:true,
+ q:"Parmi ces rubriques d'une fiche formation, lesquelles sont <strong>renseignées par l'établissement</strong> ?",
+ choices:[
+  {t:"Chiffres d'accès",ok:false,fb:"Les chiffres d'accès sont calculés automatiquement par Parcoursup."},
+  {t:"Attendus nationaux",ok:false,fb:"Les attendus nationaux sont définis au niveau national, pas par l'établissement."},
+  {t:"Grille d'analyse des candidatures",ok:true},
+  {t:"Présentation de la formation",ok:true},
+ ],tags:["Fiche formation","Procédure"]},
+
+{id:10,color:"blue",theme:"Formations",title:"Exigences établissement",type:"qcm",multi:true,
+ q:"En plus du dossier Parcoursup, qu'est-ce qu'un établissement peut exiger pour examiner une candidature ?",
+ choices:[
+  {t:"Des frais de dossier (si des épreuves sont organisées)",ok:true},
+  {t:"Des pièces complémentaires (CV, book artistique, formulaire…)",ok:true},
+  {t:"Une lettre de recommandation d'un professeur",ok:false,fb:"Il n'existe pas de lettre de recommandation nationale obligatoire dans Parcoursup."},
+  {t:"Un justificatif de résidence",ok:false,fb:"Un justificatif de résidence n'est pas exigé dans le dossier Parcoursup."},
+ ],tags:["Formations","Coût"]},
+
+{id:11,color:"blue",theme:"Formations",title:"Accès avec le bac",type:"vf",
+ q:"Avec son baccalauréat, peut-on accéder à <strong>n'importe quelle</strong> formation supérieure ?",
+ correct:false,
+ fbTrue:"✘ Non : certaines formations ont des modalités réservées à une série de bac spécifique.",
+ fbFalse:"✔ Exact ! Certaines formations ont des modalités de candidature réservées à une série de bac.",
+ tags:["Accessibilité","Profil de bac"]},
+
+{id:12,color:"blue",theme:"Formations",title:"Licence hors académie",type:"qcm",multi:false,
+ q:"À quoi faut-il faire attention quand on candidate sur une <strong>licence non-sélective dans une autre académie</strong> ?",
+ choices:[
+  {t:"À la sectorisation géographique (priorité aux candidats de l'académie)",ok:true},
+  {t:"Au nombre maximum de vœux autorisés",ok:false,fb:"Le nombre de vœux n'est pas limité par l'académie de résidence."},
+  {t:"À la date limite de confirmation du vœu",ok:false,fb:"Les dates s'appliquent à tous, pas seulement aux candidats hors académie."},
+  {t:"Au niveau requis en langues étrangères",ok:false,fb:"Ce n'est pas un critère lié à la sectorisation géographique."},
+ ],tags:["Sectorisation","Procédure"]},
+
+{id:13,color:"blue",theme:"Formations",title:"Sectorisation BTS/CPGE",type:"vf",
+ q:"Le secteur géographique s'applique-t-il pour un <strong>BTS ou une CPGE</strong> ?",
+ correct:false,
+ fbTrue:"✘ Non : les formations sélectives comme le BTS et la CPGE ne sont pas concernées par la sectorisation.",
+ fbFalse:"✔ Exact ! Les formations sélectives (BTS, CPGE…) ne sont pas concernées par la sectorisation géographique.",
+ tags:["Sectorisation","Formations"]},
+
+{id:14,color:"blue",theme:"Formations",title:"Formation sans diplôme",type:"qcm",multi:false,
+ q:"Parmi les formations suivantes, laquelle <strong>ne délivre pas de diplôme</strong> ?",
+ choices:[
+  {t:"CPGE (Classe préparatoire aux grandes écoles)",ok:true},
+  {t:"BTS (Brevet de technicien supérieur)",ok:false,fb:"Le BTS délivre bien un diplôme d'État reconnu (Bac+2)."},
+  {t:"Licence",ok:false,fb:"La licence est un diplôme de niveau Bac+3."},
+  {t:"DN MADE (Diplôme national des métiers d'art et du design)",ok:false,fb:"Le DN MADE est un diplôme national de niveau Bac+3."},
+  {t:"BUT (Bachelor universitaire de technologie)",ok:false,fb:"Le BUT délivre un diplôme de niveau Bac+3."},
+ ],tags:["Formations","Diplôme"]},
+
+{id:15,color:"blue",theme:"Formations",title:"Formations en lycée",type:"qcm",multi:true,
+ q:"Parmi les formations ci-dessous, lesquelles sont <strong>suivies en lycée</strong> ?",
+ choices:[
+  {t:"BTS (Brevet de technicien supérieur)",ok:true},
+  {t:"CPGE (Classe préparatoire aux grandes écoles)",ok:true},
+  {t:"DN MADE (Diplôme national des métiers d'art et du design)",ok:true},
+  {t:"Licence",ok:false,fb:"La licence est une formation universitaire, dispensée à l'université."},
+  {t:"BUT (Bachelor universitaire de technologie)",ok:false,fb:"Le BUT se prépare dans les IUT, rattachés aux universités."},
+ ],tags:["Formations","Lycée"]},
+
+{id:16,color:"blue",theme:"Formations",title:"Durée 3 ans",type:"qcm",multi:true,
+ q:"Parmi les formations ci-dessous, lesquelles correspondent à <strong>3 ans d'études</strong> ?",
+ choices:[
+  {t:"Licence",ok:true},
+  {t:"BUT (Bachelor universitaire de technologie)",ok:true},
+  {t:"DN MADE (Diplôme national des métiers d'art et du design)",ok:true},
+  {t:"BTS (Brevet de technicien supérieur)",ok:false,fb:"Le BTS dure 2 ans (Bac+2)."},
+  {t:"CPGE (Classe préparatoire aux grandes écoles)",ok:false,fb:"La CPGE dure 2 ans et ne délivre pas de diplôme propre."},
+ ],tags:["Formations","Durée"]},
+
+{id:17,color:"blue",theme:"Formations",title:"Lieu du BUT",type:"qcm",multi:false,
+ q:"Où peut-on suivre un <strong>BUT</strong> ?",
+ choices:[
+  {t:"En milieu universitaire (IUT)",ok:true},
+  {t:"En école spécialisée privée",ok:false,fb:"Le BUT est un diplôme public dispensé uniquement en IUT."},
+  {t:"En lycée",ok:false,fb:"Le BUT n'est pas dispensé en lycée."},
+  {t:"En CPGE uniquement",ok:false,fb:"La CPGE est une filière différente du BUT."},
+ ],tags:["Formations","BUT"]},
+
+{id:18,color:"red",theme:"Candidats",title:"Comparaison formations",type:"qcm",multi:false,
+ q:"Sur le moteur de recherche Parcoursup, combien de formations peut-on <strong>comparer en même temps</strong> (sur ordinateur) ?",
+ choices:[
+  {t:"Minimum 2, maximum 5",ok:true},
+  {t:"Minimum 1, maximum 3",ok:false,fb:"Le minimum est 2 et le maximum est 5, pas 3."},
+  {t:"Jusqu'à 10 à la fois",ok:false,fb:"La limite est 5 formations comparées simultanément."},
+  {t:"2 seulement",ok:false,fb:"On peut comparer jusqu'à 5 formations."},
+ ],tags:["Plate-forme","Procédure"]},
+
+{id:19,color:"red",theme:"Candidats",title:"Pourquoi comparer",type:"qcm",multi:true,
+ q:"Pourquoi est-il utile de <strong>comparer une même formation dans plusieurs établissements</strong> ?",
+ choices:[
+  {t:"Le nombre de places n'est pas le même d'un établissement à l'autre",ok:true},
+  {t:"Le nombre de candidats n'est pas le même d'un établissement à l'autre",ok:true},
+  {t:"Le contenu du diplôme est différent selon l'établissement",ok:false,fb:"Le contenu du diplôme est national et identique quel que soit l'établissement."},
+  {t:"Les frais d'inscription varient toujours",ok:false,fb:"Les frais d'inscription ne varient pas systématiquement entre établissements publics."},
+ ],tags:["Taux d'accès","Établissements"]},
+
+{id:20,color:"red",theme:"Candidats",title:"Variation taux d'accès",type:"qcm",multi:true,
+ q:"Pourquoi le <strong>taux d'accès</strong> varie-t-il d'un établissement à l'autre pour une même spécialité ?",
+ choices:[
+  {t:"Le nombre de places proposées n'est pas identique",ok:true},
+  {t:"Le nombre de candidats reçus diffère",ok:true},
+  {t:"Les profils de baccalauréat des candidats varient",ok:true},
+  {t:"Les notes obtenues au bac sont pondérées différemment par Parcoursup",ok:false,fb:"Parcoursup ne pondère pas les notes ; ce sont les formations qui définissent leur grille."},
+ ],tags:["Taux d'accès","Procédure"]},
+
+{id:21,color:"red",theme:"Candidats",title:"Points de vigilance",type:"qcm",multi:true,
+ q:"Parmi les éléments suivants, lesquels sont des <strong>points de vigilance</strong> qu'un candidat doit vérifier avant de postuler ? <em>(plusieurs réponses)</em>",
+ choices:[
+  {t:"La sectorisation de la formation",ok:true},
+  {t:"La mobilité (éloignement et hébergement)",ok:true},
+  {t:"L'accessibilité (sélectivité, épreuves, profil de bac, coût, cohérence du parcours)",ok:true},
+  {t:"Les places réservées à certains groupes de candidats",ok:true},
+  {t:"Le taux d'accès",ok:true},
+  {t:"La couleur du logo de l'établissement",ok:false,fb:"La couleur du logo n'a aucune influence sur la candidature."},
+  {t:"Le nombre de professeurs dans la formation",ok:false,fb:"Ce critère n'est pas un point de vigilance officiel de Parcoursup."},
+ ],tags:["Candidats","Points de vigilance"]},
+
+{id:22,color:"red",theme:"Candidats",title:"Taux d'accès ≠ admis",type:"vf",
+ q:"Le taux d'accès est-il égal au nombre de candidats <strong>admis</strong> dans une formation ?",
+ correct:false,
+ fbTrue:"✘ Non : le taux d'accès correspond aux candidats ayant reçu une proposition, pas nécessairement admis définitivement.",
+ fbFalse:"✔ Exact ! Le taux d'accès concerne les candidats ayant reçu une proposition, pas ceux qui l'ont acceptée.",
+ tags:["Taux d'accès","Candidats"]},
+
+{id:23,color:"red",theme:"Candidats",title:"Résultats scolaires examinés",type:"qcm",multi:true,
+ q:"Quels <strong>résultats scolaires</strong> peuvent être examinés dans les candidatures Parcoursup ?",
+ choices:[
+  {t:"Les bulletins de 1re et Terminale",ok:true},
+  {t:"Les résultats du baccalauréat (épreuves de 1re et contrôle continu)",ok:true},
+  {t:"Les bulletins de la classe de 2nde",ok:false,fb:"Seuls les bulletins de 1re et Terminale sont transmis dans le dossier Parcoursup."},
+  {t:"Les résultats du brevet des collèges (DNB)",ok:false,fb:"Le brevet n'est pas inclus dans le dossier Parcoursup."},
+ ],tags:["Candidats","Notes"]},
+
+{id:24,color:"red",theme:"Candidats",title:"Réorientation et taux d'accès",type:"vf",
+ q:"Un étudiant qui se <strong>réoriente</strong> peut-il utiliser le taux d'accès d'une formation pour évaluer ses chances ?",
+ correct:false,
+ fbTrue:"✘ Non : le taux d'accès ne concerne que les lycéens de Terminale, pas les étudiants en réorientation.",
+ fbFalse:"✔ Exact ! Le taux d'accès est calculé uniquement pour les lycéens de Terminale.",
+ tags:["Taux d'accès","Réorientation"]},
+
+{id:25,color:"red",theme:"Candidats",title:"Taux d'accès par profil de bac",type:"vf",
+ q:"Le taux d'accès à une formation est-il le même pour <strong>tous les lycéens</strong>, quelle que soit leur voie ?",
+ correct:false,
+ fbTrue:"✘ Non : le taux d'accès est donné pour chaque profil de bac (voie générale, technologique, professionnelle).",
+ fbFalse:"✔ Exact ! Le taux est décliné par voie de bac : générale, technologique, professionnelle.",
+ tags:["Taux d'accès","Profil de bac"]},
+
+{id:26,color:"red",theme:"Candidats",title:"Taux applicables au BTS",type:"qcm",multi:true,
+ q:"Parmi les propositions ci-dessous, quels taux peuvent s'appliquer à un <strong>BTS</strong> ?",
+ choices:[
+  {t:"Taux de bacheliers professionnels",ok:true},
+  {t:"Taux boursiers",ok:true},
+  {t:"Taux d'étudiants hors-secteur",ok:false,fb:"Ce taux n'est pas appliqué en BTS ; la sectorisation ne s'applique pas aux formations sélectives."},
+ ],tags:["BTS","Places réservées","Boursiers"]},
+
+{id:27,color:"red",theme:"Candidats",title:"Calcul places BUT",type:"qcm",multi:false,
+ q:"Un BUT propose <strong>50 places</strong> et le taux de bacheliers technologiques est de <strong>40 %</strong>. Sur combien de places un élève de bac général peut-il candidater ?",
+ choices:[
+  {t:"30 places (50 − 20 réservées aux bac techno)",ok:true},
+  {t:"50 places (le taux ne réduit pas les places disponibles)",ok:false,fb:"Le taux réserve bien des places : 40 % × 50 = 20 places, donc 30 restantes."},
+  {t:"20 places (seules les places réservées aux bac techno lui sont accessibles)",ok:false,fb:"C'est l'inverse : les 20 places réservées sont pour les bac techno, pas pour les bac généraux."},
+  {t:"10 places (un second quota réduit encore l'offre)",ok:false,fb:"Il n'y a qu'un seul quota ici : 40 % × 50 = 20 places réservées, soit 30 disponibles."},
+ ],tags:["BUT","Places réservées","Calcul"]},
+
+{id:28,color:"yellow",theme:"Plate-forme",title:"Nombre de vœux",type:"qcm",multi:false,
+ q:"Combien de vœux maximum peut-on formuler sur Parcoursup, et comment se répartissent-ils ?",
+ choices:[
+  {t:"10 vœux en formation initiale + 10 vœux en apprentissage (20 au total)",ok:true},
+  {t:"10 vœux au total, toutes formations confondues",ok:false,fb:"Les 10 vœux en formation initiale et les 10 en apprentissage sont des compteurs séparés."},
+  {t:"20 vœux en formation initiale uniquement",ok:false,fb:"La limite en formation initiale est de 10 vœux, pas 20."},
+  {t:"5 vœux en formation initiale + 5 en apprentissage",ok:false,fb:"Le maximum est 10 vœux dans chaque catégorie, pas 5."},
+ ],tags:["Plate-forme","Vœux"]},
+
+{id:29,color:"yellow",theme:"Plate-forme",title:"Réponses à une proposition",type:"qcm",multi:true,
+ q:"Lorsqu'un candidat reçoit une <strong>proposition d'admission</strong>, quelles sont les 3 réponses possibles ?",
+ choices:[
+  {t:"Accepter définitivement",ok:true},
+  {t:"Refuser",ok:true},
+  {t:"Accepter et conserver des vœux en attente",ok:true},
+  {t:"Demander un délai supplémentaire illimité",ok:false,fb:"Il n'existe pas de délai illimité : les réponses doivent être données dans les délais impartis."},
+ ],tags:["Plate-forme","Admission"]},
+
+{id:30,color:"yellow",theme:"Plate-forme",title:"CV obligatoire",type:"vf",
+ q:"Est-il obligatoire de fournir un <strong>CV</strong> pour confirmer tous ses vœux sur Parcoursup ?",
+ correct:false,
+ fbTrue:"✘ Non : le CV n'est requis que pour les vœux en apprentissage.",
+ fbFalse:"✔ Exact ! Le CV n'est obligatoire que pour les vœux en apprentissage, pas pour tous les vœux.",
+ tags:["Plate-forme","Apprentissage"]},
+
+{id:31,color:"yellow",theme:"Plate-forme",title:"Contenu dossier Parcoursup",type:"qcm",multi:true,
+ q:"Mis à part son identité, que contient le <strong>dossier Parcoursup</strong> d'un élève ?",
+ choices:[
+  {t:"Sa scolarité (spécialités, CV…)",ok:true},
+  {t:"Ses bulletins depuis la 1re",ok:true},
+  {t:"Ses vœux",ok:true},
+  {t:"Pièces complémentaires éventuelles (CV, formulaires…)",ok:true},
+  {t:"Son dossier médical",ok:false,fb:"Le dossier médical ne fait pas partie du dossier Parcoursup."},
+  {t:"Ses résultats au brevet des collèges",ok:false,fb:"Le brevet n'est pas inclus dans le dossier Parcoursup."},
+ ],tags:["Plate-forme","Dossier"]},
+
+{id:32,color:"yellow",theme:"Plate-forme",title:"Éléments analysés",type:"qcm",multi:true,
+ q:"Parmi les éléments suivants, lesquels sont analysés par une formation dans une candidature Parcoursup ? <em>(5 bonnes réponses)</em>",
+ choices:[
+  {t:"Les résultats scolaires",ok:true},
+  {t:"Les méthodes de travail",ok:true},
+  {t:"Le savoir-être",ok:true},
+  {t:"La motivation",ok:true},
+  {t:"Les engagements et activités extra-scolaires",ok:true},
+  {t:"Le nombre de frères et sœurs dans l'enseignement supérieur",ok:false,fb:"La situation familiale n'est pas un critère d'analyse des candidatures Parcoursup."},
+  {t:"Le réseau social du candidat",ok:false,fb:"Le réseau social n'est pas un critère d'analyse des candidatures Parcoursup."},
+ ],tags:["Plate-forme","Candidats"]},
+
+{id:33,color:"yellow",theme:"Plate-forme",title:"Taux boursiers",type:"qcm",multi:false,
+ q:"Pourquoi existe-t-il des taux réglementaires comme les <strong>taux boursiers</strong> ?",
+ choices:[
+  {t:"Pour favoriser l'égalité d'accès à l'enseignement supérieur",ok:true},
+  {t:"Pour limiter le nombre de candidatures par formation",ok:false,fb:"L'objectif est l'égalité d'accès, pas la limitation des candidatures."},
+  {t:"Pour avantager les élèves ayant les meilleures notes",ok:false,fb:"Les taux boursiers visent les critères sociaux, pas les notes."},
+  {t:"Pour réduire le nombre de vœux par candidat",ok:false,fb:"Ces taux n'ont aucun lien avec le nombre de vœux."},
+ ],tags:["Plate-forme","Boursiers","Égalité"]},
+
+{id:34,color:"yellow",theme:"Plate-forme",title:"Taux Parcoursup",type:"qcm",multi:true,
+ q:"Quels taux la <strong>plateforme Parcoursup</strong> utilise-t-elle pour favoriser l'égalité d'accès ?",
+ choices:[
+  {t:"Taux légaux (boursiers) pour définir l'ordre d'appel",ok:true},
+  {t:"Taux de sectorisation géographique",ok:true},
+  {t:"Taux de bac pro en BTS",ok:true},
+  {t:"Taux de bac techno en BUT",ok:true},
+  {t:"Taux de mentions au baccalauréat",ok:false,fb:"Les mentions au bac ne constituent pas un taux réglementaire Parcoursup."},
+ ],tags:["Plate-forme","Égalité"]},
+
+{id:35,color:"yellow",theme:"Plate-forme",title:"Compte favori",type:"qcm",multi:false,
+ q:"À quoi sert le <strong>compte favori</strong> sur la carte des formations Parcoursup ?",
+ choices:[
+  {t:"À préparer ses candidatures avant la Terminale",ok:true},
+  {t:"À recevoir des alertes en temps réel sur les formations",ok:false,fb:"Le compte favori ne génère pas d'alertes en temps réel."},
+  {t:"À contacter directement les établissements",ok:false,fb:"Parcoursup ne permet pas de contacter directement les établissements."},
+  {t:"À réserver une place dans une formation",ok:false,fb:"Mettre en favori ne réserve aucune place."},
+ ],tags:["Plate-forme","Outil"]},
+
+{id:36,color:"yellow",theme:"Plate-forme",title:"BTS voie générale",type:"qcm",multi:false,
+ q:"Une lycéenne de <strong>voie générale</strong> recherche un BTS. À quoi doit-elle faire attention concernant le nombre de places ?",
+ choices:[
+  {t:"Des places sont réservées aux bacheliers professionnels en BTS, réduisant le nombre de places disponibles pour les autres.",ok:true},
+  {t:"Elle n'a pas accès au BTS en tant que lycéenne de voie générale.",ok:false,fb:"Le BTS est accessible aux bac généraux, mais les quotas bac pro réduisent l'offre disponible."},
+  {t:"Toutes les places du BTS lui sont accessibles sans restriction.",ok:false,fb:"Un quota de places est réservé aux bacheliers professionnels."},
+  {t:"La sectorisation géographique réduit le nombre de places disponibles.",ok:false,fb:"Le BTS est sélectif : la sectorisation géographique ne s'y applique pas."},
+ ],tags:["BTS","Places réservées"]},
+
+{id:37,color:"yellow",theme:"Plate-forme",title:"BUT voie technologique",type:"qcm",multi:false,
+ q:"Un lycéen de <strong>voie technologique</strong> recherche un BUT. À quoi doit-il faire attention ?",
+ choices:[
+  {t:"Des places sont réservées aux bacheliers technologiques : il doit en tenir compte pour calculer les places réellement disponibles.",ok:true},
+  {t:"Il bénéficie d'un accès garanti à tous les BUT.",ok:false,fb:"L'accès n'est pas garanti ; il y a des places réservées, pas une admission automatique."},
+  {t:"Le BUT est réservé aux bacheliers généraux.",ok:false,fb:"Le BUT n'est pas réservé aux bac généraux ; des places sont réservées aux bac techno."},
+  {t:"La sectorisation géographique s'applique au BUT.",ok:false,fb:"Le BUT est une formation sélective : la sectorisation ne s'y applique pas."},
+ ],tags:["BUT","Places réservées"]},
+
+{id:38,color:"yellow",theme:"Plate-forme",title:"Onglet profil de bac",type:"qcm",multi:false,
+ q:"Dans quel <strong>onglet</strong> d'une fiche formation un candidat peut-il vérifier que celle-ci est accessible à son profil de baccalauréat ?",
+ choices:[
+  {t:"Modalités de candidatures",ok:true},
+  {t:"Présentation de la formation",ok:false,fb:"La présentation décrit la formation, pas les conditions d'accès par profil de bac."},
+  {t:"Chiffres d'accès",ok:false,fb:"Cet onglet présente le taux d'accès, pas les conditions d'accès selon le profil de bac."},
+  {t:"Attendus nationaux",ok:false,fb:"Les attendus décrivent le profil idéal, mais les modalités sont dans l'onglet dédié."},
+ ],tags:["Plate-forme","Fiche formation"]},
+
+{id:39,color:"yellow",theme:"Plate-forme",title:"Vœux apprentissage",type:"vf",
+ q:"Peut-on formuler des vœux en <strong>apprentissage</strong> en plus de ses vœux en formation initiale ?",
+ correct:true,
+ fbTrue:"✔ Exact ! On peut cumuler jusqu'à 10 vœux en apprentissage en plus des 10 vœux en formation initiale.",
+ fbFalse:"✘ Si, c'est possible : on peut formuler jusqu'à 10 vœux en apprentissage, en plus des 10 vœux en formation initiale.",
+ tags:["Plate-forme","Apprentissage","Vœux"]},
+
+{id:40,color:"yellow",theme:"Plate-forme",title:"Onglet taux d'accès",type:"qcm",multi:false,
+ q:"Sur une fiche formation, quel onglet permet de <strong>personnaliser le taux d'accès</strong> selon son profil ?",
+ choices:[
+  {t:"Visualiser les chiffres d'accès à une formation",ok:true},
+  {t:"Modalités de candidatures",ok:false,fb:"Cet onglet renseigne les conditions de candidature, pas le taux personnalisé."},
+  {t:"Présentation de la formation",ok:false,fb:"La présentation décrit la formation, pas le taux d'accès personnalisé."},
+  {t:"Attendus nationaux",ok:false,fb:"Les attendus décrivent le profil idéal, pas le taux d'accès personnalisé."},
+ ],tags:["Plate-forme","Taux d'accès"]},
+
+{id:41,color:"yellow",theme:"Plate-forme",title:"Envoi des propositions",type:"qcm",multi:false,
+ q:"Qui <strong>envoie les propositions d'admission</strong> aux candidats ?",
+ choices:[
+  {t:"La plateforme Parcoursup, à partir du classement réalisé par les formations",ok:true},
+  {t:"Les formations directement, par e-mail",ok:false,fb:"Les formations ne contactent pas directement les candidats : c'est Parcoursup qui notifie."},
+  {t:"Le rectorat de l'académie",ok:false,fb:"Le rectorat ne gère pas l'envoi des propositions d'admission."},
+  {t:"Le lycée d'origine du candidat",ok:false,fb:"Le lycée d'origine ne gère pas les propositions d'admission Parcoursup."},
+ ],tags:["Plate-forme","Procédure"]},
+
+{id:42,color:"yellow",theme:"Plate-forme",title:"Personnaliser l'accès",type:"qcm",multi:true,
+ q:"Pour <strong>personnaliser les possibilités d'accès</strong> à une formation sur Parcoursup, quels éléments de scolarité faut-il renseigner ?",
+ choices:[
+  {t:"Mes enseignements de spécialité (ou ma spécialité de bac)",ok:true},
+  {t:"Ma moyenne générale de Terminale",ok:true},
+  {t:"Mes résultats au brevet des collèges",ok:false,fb:"Le brevet n'est pas utilisé pour personnaliser le taux d'accès sur Parcoursup."},
+  {t:"Mes activités extra-scolaires",ok:false,fb:"Les activités extra-scolaires ne personnalisent pas le taux d'accès."},
+ ],tags:["Plate-forme","Taux d'accès"]},
+
+{id:43,color:"grey",theme:"Points de vigilance",title:"Mobilité : éloignement",type:"qcm",multi:false,
+ q:"Que signifie le point de vigilance <strong>« Mobilité : éloignement »</strong> ?",
+ choices:[
+  {t:"La formation est éloignée de la résidence du candidat, qui doit prévoir un moyen de déplacement.",ok:true},
+  {t:"La formation est réservée aux candidats d'autres régions.",ok:false,fb:"Ce point concerne la distance domicile–formation, pas une restriction de provenance."},
+  {t:"Le candidat devra déménager obligatoirement.",ok:false,fb:"Ce n'est pas forcément obligatoire ; cela dépend de la distance."},
+  {t:"La formation impose des stages à l'étranger.",ok:false,fb:"Ce point concerne l'éloignement géographique au quotidien, pas les stages."},
+ ],tags:["Points de vigilance","Mobilité"]},
+
+{id:44,color:"grey",theme:"Points de vigilance",title:"Mobilité : hébergement",type:"qcm",multi:false,
+ q:"Que signifie le point de vigilance <strong>« Mobilité : hébergement »</strong> ?",
+ choices:[
+  {t:"La formation est trop éloignée pour un aller-retour quotidien : un hébergement est nécessaire, potentiellement coûteux.",ok:true},
+  {t:"La formation dispose d'un internat obligatoire.",ok:false,fb:"Ce n'est pas forcément un internat ; tout hébergement à proximité est concerné."},
+  {t:"Un logement est fourni gratuitement par l'établissement.",ok:false,fb:"Aucun logement gratuit n'est systématiquement fourni."},
+  {t:"Le candidat doit résider dans la même ville que la formation.",ok:false,fb:"Ce n'est pas une obligation ; le point de vigilance signale seulement un coût d'hébergement."},
+ ],tags:["Points de vigilance","Mobilité","Coût"]},
+
+{id:45,color:"grey",theme:"Points de vigilance",title:"Formation sélective",type:"qcm",multi:false,
+ q:"Que signifie le point de vigilance <strong>« Accessibilité : formation sélective »</strong> ?",
+ choices:[
+  {t:"La formation peut refuser des candidatures.",ok:true},
+  {t:"La formation est accessible uniquement aux boursiers.",ok:false,fb:"La sélectivité ne signifie pas réservation aux boursiers."},
+  {t:"La formation n'accepte que les candidats de l'académie.",ok:false,fb:"La sélectivité ne se limite pas à une restriction géographique."},
+  {t:"La formation impose un niveau de langue étrangère élevé.",ok:false,fb:"Ce point concerne la sélectivité globale, pas uniquement les langues."},
+ ],tags:["Points de vigilance","Sélectivité"]},
+
+{id:46,color:"grey",theme:"Points de vigilance",title:"Épreuves d'admission",type:"qcm",multi:false,
+ q:"Que signifie le point de vigilance <strong>« Accessibilité : épreuves »</strong> ?",
+ choices:[
+  {t:"Des épreuves écrites et/ou orales sont organisées par la formation, en plus du dossier Parcoursup.",ok:true},
+  {t:"Le candidat doit passer uniquement un entretien oral.",ok:false,fb:"Il peut s'agir d'épreuves écrites, orales, ou d'un portfolio selon la formation."},
+  {t:"Le baccalauréat fait office d'épreuve d'entrée.",ok:false,fb:"Le bac n'est pas l'épreuve d'entrée ; des épreuves spécifiques sont organisées."},
+  {t:"Les épreuves sont optionnelles.",ok:false,fb:"Si ce point est signalé, les épreuves font partie du processus d'admission."},
+ ],tags:["Points de vigilance","Épreuves"]},
+
+{id:47,color:"grey",theme:"Points de vigilance",title:"Coût de la formation",type:"qcm",multi:true,
+ q:"Que recouvre le point de vigilance <strong>« Accessibilité : le coût »</strong> ?",
+ choices:[
+  {t:"Des frais de dossier liés à des épreuves",ok:true},
+  {t:"Des frais de scolarité élevés",ok:true},
+  {t:"Le coût du transport pour se rendre à la formation",ok:false,fb:"Le coût du transport relève du point de vigilance « Mobilité »."},
+  {t:"Les frais d'inscription au baccalauréat",ok:false,fb:"Ce point concerne les frais propres à la formation, pas au bac."},
+ ],tags:["Points de vigilance","Coût"]},
+
+{id:48,color:"grey",theme:"Points de vigilance",title:"Profil de bac",type:"qcm",multi:false,
+ q:"Que signifie le point de vigilance <strong>« Accessibilité : profil de bac »</strong> ?",
+ choices:[
+  {t:"La candidature est possible pour un ou plusieurs profil(s) de bac défini(s) uniquement.",ok:true},
+  {t:"Tous les profils de bac sont acceptés sans exception.",ok:false,fb:"Si ce point apparaît, c'est précisément parce que tous les profils ne sont pas acceptés."},
+  {t:"Le profil de bac détermine le montant des frais de scolarité.",ok:false,fb:"Le profil de bac détermine l'éligibilité à la candidature, pas les frais."},
+  {t:"La formation est réservée aux bacheliers généraux.",ok:false,fb:"Ce n'est pas forcément les bac généraux ; tout dépend de la formation."},
+ ],tags:["Points de vigilance","Profil de bac"]},
+
+{id:49,color:"grey",theme:"Points de vigilance",title:"Cohérence du parcours",type:"qcm",multi:false,
+ q:"Que signifie le point de vigilance <strong>« Accessibilité : cohérence de poursuite d'études »</strong> ?",
+ choices:[
+  {t:"Le profil ou le parcours scolaire du candidat n'est pas cohérent avec le vœu souhaité.",ok:true},
+  {t:"Le candidat doit avoir obtenu une mention Bien au baccalauréat.",ok:false,fb:"Aucune mention minimale n'est exigée par ce point de vigilance."},
+  {t:"La formation impose d'avoir suivi une spécialité précise en terminale.",ok:false,fb:"Ce point signale une incohérence globale du parcours, pas une spécialité obligatoire."},
+  {t:"Le candidat ne peut pas postuler s'il est en réorientation.",ok:false,fb:"La réorientation est possible ; ce point porte sur la cohérence du parcours."},
+ ],tags:["Points de vigilance","Cohérence"]},
+
+{id:50,color:"grey",theme:"Points de vigilance",title:"Sectorisation",type:"qcm",multi:false,
+ q:"Que signifie le point de vigilance <strong>« Sectorisation de la formation »</strong> ?",
+ choices:[
+  {t:"Un taux est fixé pour l'accueil de candidats ne résidant pas dans le secteur géographique de la formation.",ok:true},
+  {t:"La formation n'accepte que les candidats résidant dans la même ville.",ok:false,fb:"La sectorisation limite sans bloquer totalement ; elle fixe un taux, pas une exclusion."},
+  {t:"La formation est accessible à tous les candidats, sans restriction géographique.",ok:false,fb:"Si ce point apparaît, une restriction géographique existe bien."},
+  {t:"Le secteur géographique détermine uniquement les frais de déplacement pris en charge.",ok:false,fb:"Ce point concerne l'éligibilité à la candidature, pas des frais de déplacement."},
+ ],tags:["Points de vigilance","Sectorisation"]},
+
+{id:51,color:"grey",theme:"Points de vigilance",title:"Places réservées",type:"qcm",multi:true,
+ q:"Que signifie le point de vigilance <strong>« Places réservées à un groupe de candidats »</strong> ?",
+ choices:[
+  {t:"Des places sont réservées aux bacheliers professionnels en BTS.",ok:true},
+  {t:"Des places sont réservées aux bacheliers technologiques en BUT.",ok:true},
+  {t:"Des places sont réservées aux boursiers dans toutes les formations.",ok:false,fb:"Les quotas boursiers existent mais relèvent d'un autre point de vigilance."},
+  {t:"Des places sont réservées aux candidats de l'académie dans toutes les formations.",ok:false,fb:"Ce cas est couvert par la sectorisation, pas par ce point de vigilance."},
+ ],tags:["Points de vigilance","Places réservées"]},
+
+{id:52,color:"grey",theme:"Points de vigilance",title:"Critères notes",type:"qcm",multi:false,
+ q:"Que signifie le point de vigilance <strong>« Critères d'examen des vœux : notes »</strong> ?",
+ choices:[
+  {t:"Les résultats scolaires comptent pour 50 % ou plus dans l'examen du dossier.",ok:true},
+  {t:"Seule la moyenne générale du bac est prise en compte.",ok:false,fb:"Plusieurs notes sont concernées, pas uniquement la moyenne générale du bac."},
+  {t:"Les notes ne sont jamais le seul critère.",ok:false,fb:"Si ce point est signalé, les notes représentent au moins 50 % de la pondération."},
+  {t:"Les notes comptent pour moins de 30 % dans l'examen du dossier.",ok:false,fb:"C'est l'inverse : elles comptent pour au moins 50 %."},
+ ],tags:["Points de vigilance","Notes"]},
+
+{id:53,color:"grey",theme:"Points de vigilance",title:"Taux d'accès variable",type:"qcm",multi:false,
+ q:"Que signifie le point de vigilance <strong>« Taux d'accès variable »</strong> ?",
+ choices:[
+  {t:"Le taux d'accès est plus ou moins favorable selon l'établissement.",ok:true},
+  {t:"Le taux d'accès change tous les ans dans le même établissement.",ok:false,fb:"Il peut varier chaque année, mais ce point signale surtout la variation entre établissements."},
+  {t:"Le taux d'accès dépend uniquement du nombre de boursiers.",ok:false,fb:"Le taux dépend de plusieurs facteurs (places, candidats, profils de bac), pas seulement des boursiers."},
+  {t:"Le taux d'accès est identique pour toutes les voies de bac.",ok:false,fb:"Au contraire, le taux est décliné par voie de bac."},
+ ],tags:["Points de vigilance","Taux d'accès"]},
+
+{id:54,color:"grey",theme:"Points de vigilance",title:"Spécialisation",type:"qcm",multi:false,
+ q:"Que signifie le point de vigilance <strong>« Spécialisation »</strong> sur une fiche formation ?",
+ choices:[
+  {t:"Des parcours de spécialisation existent dès la première année de la formation.",ok:true},
+  {t:"La formation impose une spécialité de bac précise pour candidater.",ok:false,fb:"Ce point concerne les parcours internes à la formation, pas les spécialités du bac."},
+  {t:"La spécialisation n'intervient qu'en 3e année.",ok:false,fb:"Ce point de vigilance signale justement que la spécialisation peut intervenir dès la 1re année."},
+  {t:"Il n'y a aucun choix de parcours dans cette formation.",ok:false,fb:"C'est l'inverse : des choix de parcours existent dès la 1re année."},
+ ],tags:["Points de vigilance","Spécialisation"]},
+];
+
+// ═══════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════
+const S = { answers:{}, view:'cards', filter:'all' };
+
+// ═══════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════
+function isAnswered(q){
+  const a = S.answers[q.id];
+  if(!a) return false;
+  if(q.type==='qcm')   return a.done===true;
+  if(q.type==='vf')    return a.choice!==undefined;
+  if(q.type==='blanks')return a.done===true;
+  if(q.type==='mark')  return a.done===true;
+  return false;
+}
+function isCorrect(q){
+  const a = S.answers[q.id];
+  if(!a || !isAnswered(q)) return null;
+  return a.correct===true;
+}
+function filtered(){ return QS.filter(q=>{
+  if(S.filter==='all')   return true;
+  if(S.filter==='todo')  return !isAnswered(q);
+  return q.color===S.filter;
+});}
+
+// ═══════════════════════════════════════════════
+// SCORE
+// ═══════════════════════════════════════════════
+function updateScore(){
+  let ok=0,ko=0;
+  QS.forEach(q=>{ const c=isCorrect(q); if(c===true)ok++; else if(c===false)ko++; });
+  document.getElementById('s-ok').textContent=ok;
+  document.getElementById('s-ko').textContent=ko;
+  const done=QS.filter(q=>isAnswered(q)).length;
+  document.getElementById('prog').textContent=`${done} / 54 répondues`;
+}
+
+// ═══════════════════════════════════════════════
+// PARSE mark-the-words text  [word] = target
+// ═══════════════════════════════════════════════
+function parseMTW(raw){
+  // Returns array of {text, isTarget}
+  const tokens=[];
+  const re=/\[([^\]]+)\]|(\S+)/g;
+  let m;
+  while((m=re.exec(raw))!==null){
+    if(m[1]) tokens.push({text:m[1],isTarget:true});
+    else     tokens.push({text:m[2],isTarget:false});
+  }
+  return tokens;
+}
+
+// ═══════════════════════════════════════════════
+// BUILD CARD RECTO – type-specific content
+// ═══════════════════════════════════════════════
+function buildCardFront(q){
+  const div=document.createElement('div');
+  div.className='card-face card-front-face';
+
+  const typeLabel=q.type==='qcm'?(q.multi?'✅ Plusieurs bonnes réponses':'✅ Une seule bonne réponse'):
+                  q.type==='vf'?'⚖️ Vrai ou Faux ?':
+                  q.type==='blanks'?'✏️ Mots à trous':'🖱️ Surligne les mots';
+
+  div.innerHTML=`
+    <div class="c-title">${q.title}</div>
+    <div class="c-theme">${q.theme}</div>
+    <div class="c-type-badge">${typeLabel}</div>
+    <div class="c-situation">${q.q}</div>
+    <div class="c-num-badge">${q.id}</div>
+  `;
+
+  const a=S.answers[q.id]||{};
+  const done=isAnswered(q);
+
+  if(q.type==='qcm'){
+    const choicesDiv=document.createElement('div');
+    choicesDiv.className='c-choices';
+    const letters='ABCDEFGH';
+    q.choices.forEach((ch,i)=>{
+      const btn=document.createElement('div');
+      btn.className='c-choice';
+      btn.dataset.letter=letters[i];
+      btn.setAttribute('data-letter',letters[i]);
+      btn.textContent=ch.t;
+      if(done){
+        btn.classList.add('locked');
+        if(ch.ok) btn.classList.add('correct');
+        else if(a.picked && a.picked.includes(i)) btn.classList.add('wrong-picked');
+        else btn.classList.add('wrong-shown');
+      } else {
+        btn.addEventListener('click',()=>handleQCMClick(q,i,btn,choicesDiv));
+      }
+      choicesDiv.appendChild(btn);
+    });
+    div.appendChild(choicesDiv);
+  }
+  else if(q.type==='vf'){
+    const vfDiv=document.createElement('div');
+    vfDiv.className='c-vf-btns';
+    ['Vrai','Faux'].forEach(label=>{
+      const btn=document.createElement('div');
+      btn.className='c-vf-btn '+(label==='Vrai'?'vrai':'faux');
+      btn.textContent=label==='Vrai'?'✔ Vrai':'✘ Faux';
+      if(done){
+        btn.classList.add('locked');
+        const picked=a.choice;
+        const isVrai=label==='Vrai';
+        if(picked===isVrai){
+          btn.classList.add(a.correct?'selected-ok':'selected-wrong');
+        } else {
+          btn.classList.add('revealed');
+        }
+      } else {
+        btn.addEventListener('click',()=>handleVFClick(q,label==='Vrai',btn,vfDiv));
+      }
+      vfDiv.appendChild(btn);
+    });
+    div.appendChild(vfDiv);
+  }
+  else if(q.type==='blanks'){
+    const zone=document.createElement('div');
+    zone.className='c-blank-zone';
+    const inputs=[];
+    q.blanks.forEach((bl,bi)=>{
+      const item=document.createElement('div');
+      item.className='c-blank-item';
+      const inp=document.createElement('input');
+      inp.type='text';
+      inp.placeholder='?';
+      if(done){ inp.value=a.vals?.[bi]||''; inp.disabled=true; inp.className=a.correct?'ok':'err'; }
+      inputs.push(inp);
+      item.innerHTML=`<span>${bl.before}</span>`;
+      item.appendChild(inp);
+      item.innerHTML+=`<span>${bl.after}</span>`;
+      // fix: need to re-append input after innerHTML
+      item.insertBefore(inp, item.children[1]);
+      zone.appendChild(item);
+    });
+    if(!done){
+      const sub=document.createElement('button');
+      sub.className='c-blank-submit';
+      sub.textContent='Valider';
+      sub.addEventListener('click',()=>handleBlanksSubmit(q,inputs));
+      zone.appendChild(sub);
+    }
+    div.appendChild(zone);
+  }
+  else if(q.type==='mark'){
+    const tokens=parseMTW(q.text);
+    const textDiv=document.createElement('div');
+    textDiv.className='c-mtw-text';
+    const sel=new Set(a.selected||[]);
+    tokens.forEach((tok,ti)=>{
+      const span=document.createElement('span');
+      span.className='w';
+      span.textContent=tok.text+' ';
+      if(done){
+        if(tok.isTarget && sel.has(ti))  span.classList.add('hit');
+        else if(tok.isTarget)             span.classList.add('unselected-target');
+        else if(sel.has(ti))              span.classList.add('miss');
+      } else {
+        span.classList.add('clickable');
+        if(sel.has(ti)) span.classList.add('selected');
+        span.addEventListener('click',()=>{
+          if(sel.has(ti)){ sel.delete(ti); span.classList.remove('selected'); }
+          else { sel.add(ti); span.classList.add('selected'); }
+          S.answers[q.id]={...(S.answers[q.id]||{}),selected:[...sel]};
+        });
+      }
+      textDiv.appendChild(span);
+    });
+    div.appendChild(textDiv);
+    if(!done){
+      const sub=document.createElement('button');
+      sub.className='c-mtw-submit';
+      sub.textContent='Valider';
+      sub.addEventListener('click',()=>handleMTWSubmit(q,sel,tokens));
+      div.appendChild(sub);
+    }
+  }
+  return div;
+}
+
+function buildCardBack(q){
+  const div=document.createElement('div');
+  div.className='card-face card-back-face';
+  div.innerHTML=`<div class="c-back-header">💡 Réponse — ${q.title}</div>`;
+  const body=document.createElement('div');
+  body.className='c-back-body';
+
+  if(q.type==='qcm'){
+    const letters='ABCDEFGH';
+    q.choices.forEach((ch,i)=>{
+      const item=document.createElement('div');
+      item.className='back-item '+(ch.ok?'ok-item':'wrong-item');
+      item.innerHTML=`<span class="bi-letter">${letters[i]}.</span> ${ch.t}${ch.fb?` <em style="font-size:9.5px;display:block;margin-top:2px;opacity:.8">${ch.fb}</em>`:''}`;
+      body.appendChild(item);
+    });
+  } else if(q.type==='vf'){
+    const rep=q.correct?'✔ Vrai':'✘ Faux';
+    body.innerHTML=`<div class="back-item ok-item"><strong>Réponse : ${rep}</strong><br><br>${q.fbTrue}<br><br>${q.fbFalse}</div>`;
+  } else if(q.type==='blanks'){
+    q.blanks.forEach((bl,i)=>{
+      const item=document.createElement('div');
+      item.className='back-item ok-item';
+      item.innerHTML=`${bl.before} <strong>${bl.answer[0]}</strong> ${bl.after}`;
+      body.appendChild(item);
+    });
+  } else if(q.type==='mark'){
+    const tokens=parseMTW(q.text);
+    const targets=tokens.filter(t=>t.isTarget).map(t=>t.text);
+    body.innerHTML=`<div class="back-item ok-item"><strong>Mots à surligner :</strong><br>${targets.map(t=>`<em>${t}</em>`).join(' · ')}</div>`;
+  }
+
+  div.appendChild(body);
+  div.innerHTML+=`<div class="c-num-badge">${q.id}</div>`;
+  const hint=document.createElement('div');
+  hint.className='c-flip-hint';
+  hint.textContent='Cliquer pour revenir à la question';
+  div.appendChild(hint);
+  div.addEventListener('click',()=>{
+    const wrap=div.closest('.card-wrap');
+    if(wrap) wrap.classList.toggle('flipped');
+  });
+  return div;
+}
+
+// ═══════════════════════════════════════════════
+// HANDLERS – Card
+// ═══════════════════════════════════════════════
+function handleQCMClick(q,idx,btn,choicesDiv){
+  if(!S.answers[q.id]) S.answers[q.id]={picked:[]};
+  const a=S.answers[q.id];
+  if(q.multi){
+    const pi=a.picked.indexOf(idx);
+    if(pi>=0){ a.picked.splice(pi,1); btn.style.background=''; btn.style.borderLeft=''; }
+    else { a.picked.push(idx); btn.style.background='#c5e4f8'; }
+    // Add validate button if not present
+    if(!choicesDiv.querySelector('.validate-multi-btn')){
+      const vbtn=document.createElement('div');
+      vbtn.className='c-choice validate-multi-btn';
+      vbtn.style.cssText='background:#1E3A5F;color:#fff;font-weight:700;text-align:center;cursor:pointer;padding:8px';
+      vbtn.textContent='✔ Valider ma sélection';
+      vbtn.addEventListener('click',()=>finalizeQCM(q,choicesDiv));
+      choicesDiv.appendChild(vbtn);
+    }
+  } else {
+    S.answers[q.id].picked=[idx];
+    finalizeQCM(q,choicesDiv);
+  }
+}
+
+function finalizeQCM(q,choicesDiv){
+  const a=S.answers[q.id];
+  const picked=a.picked||[];
+  const correctSet=new Set(q.choices.map((c,i)=>c.ok?i:-1).filter(i=>i>=0));
+  const correct= picked.length===correctSet.size && picked.every(i=>correctSet.has(i));
+  a.done=true; a.correct=correct;
+  // Re-render card
+  const wrap=choicesDiv.closest('.card-wrap');
+  if(wrap){
+    const inner=wrap.querySelector('.card-inner');
+    inner.innerHTML='';
+    inner.appendChild(buildCardFront(q));
+    inner.appendChild(buildCardBack(q));
+    setTimeout(()=>{ wrap.classList.add('flipped'); addStatusBadge(wrap,correct); updateScore(); },300);
+  }
+}
+
+function handleVFClick(q,choice,btn,vfDiv){
+  const correct=(choice===q.correct);
+  S.answers[q.id]={choice,done:true,correct};
+  const wrap=vfDiv.closest('.card-wrap');
+  if(wrap){
+    const inner=wrap.querySelector('.card-inner');
+    inner.innerHTML='';
+    inner.appendChild(buildCardFront(q));
+    inner.appendChild(buildCardBack(q));
+    setTimeout(()=>{ wrap.classList.add('flipped'); addStatusBadge(wrap,correct); updateScore(); },300);
+  }
+}
+
+function handleBlanksSubmit(q,inputs){
+  const vals=inputs.map(i=>i.value.trim().toLowerCase());
+  let allOk=true;
+  q.blanks.forEach((bl,i)=>{ if(!bl.answer.map(a=>a.toLowerCase()).includes(vals[i])) allOk=false; });
+  S.answers[q.id]={done:true,correct:allOk,vals};
+  const wrap=inputs[0].closest('.card-wrap');
+  if(wrap){
+    const inner=wrap.querySelector('.card-inner');
+    inner.innerHTML='';
+    inner.appendChild(buildCardFront(q));
+    inner.appendChild(buildCardBack(q));
+    setTimeout(()=>{ wrap.classList.add('flipped'); addStatusBadge(wrap,allOk); updateScore(); },300);
+  }
+}
+
+function handleMTWSubmit(q,sel,tokens){
+  const targetIdxs=new Set(tokens.map((t,i)=>t.isTarget?i:-1).filter(i=>i>=0));
+  const correct=[...sel].every(i=>targetIdxs.has(i)) && [...targetIdxs].every(i=>sel.has(i));
+  S.answers[q.id]={done:true,correct,selected:[...sel]};
+  const wrap=document.querySelector(`.card-wrap[data-id="${q.id}"]`);
+  if(wrap){
+    const inner=wrap.querySelector('.card-inner');
+    inner.innerHTML='';
+    inner.appendChild(buildCardFront(q));
+    inner.appendChild(buildCardBack(q));
+    setTimeout(()=>{ wrap.classList.add('flipped'); addStatusBadge(wrap,correct); updateScore(); },300);
+  }
+}
+
+function addStatusBadge(wrap,correct){
+  wrap.querySelectorAll('.status-badge').forEach(b=>b.remove());
+  const badge=document.createElement('div');
+  badge.className='status-badge '+(correct?'ok':'wrong');
+  badge.textContent=correct?'✓':'✗';
+  wrap.appendChild(badge);
+  updateScore();
+}
+
+// ═══════════════════════════════════════════════
+// BUILD CARDS VIEW
+// ═══════════════════════════════════════════════
+function buildCards(){
+  const grid=document.getElementById('cards-grid');
+  const empty=document.getElementById('ce');
+  grid.innerHTML='';
+  const vis=filtered();
+  empty.style.display=vis.length?'none':'block';
+  vis.forEach(q=>{
+    const wrap=document.createElement('div');
+    wrap.className=`card-wrap col-${q.color}`;
+    wrap.dataset.id=q.id;
+    if(isAnswered(q)) wrap.classList.add('flipped');
+
+    const inner=document.createElement('div');
+    inner.className='card-inner';
+    inner.appendChild(buildCardFront(q));
+    inner.appendChild(buildCardBack(q));
+    wrap.appendChild(inner);
+
+    const c=isCorrect(q);
+    if(c===true)  { const b=document.createElement('div');b.className='status-badge ok';b.textContent='✓';wrap.appendChild(b); }
+    if(c===false) { const b=document.createElement('div');b.className='status-badge wrong';b.textContent='✗';wrap.appendChild(b); }
+
+    grid.appendChild(wrap);
+  });
+}
+
+// ═══════════════════════════════════════════════
+// BUILD LIST VIEW
+// ═══════════════════════════════════════════════
+function buildList(){
+  const cont=document.getElementById('list-container');
+  const empty=document.getElementById('le');
+  cont.innerHTML='';
+  const vis=filtered();
+  empty.style.display=vis.length?'none':'block';
+  vis.forEach(q=>{ cont.appendChild(buildListItem(q)); });
+}
+
+function buildListItem(q){
+  const done=isAnswered(q);
+  const cor=isCorrect(q);
+  const icon=!done?'⬜':cor?'✅':'❌';
+  const typeLabel=q.type==='qcm'?(q.multi?'Plusieurs bonnes réponses':'Une seule bonne réponse'):
+                  q.type==='vf'?'Vrai ou Faux':q.type==='blanks'?'Mots à trous':'Surligner les mots';
+
+  const item=document.createElement('div');
+  item.className=`list-item col-${q.color}`;
+  item.innerHTML=`
+    <div class="list-hdr">
+      <div class="l-num">${q.id}</div>
+      <div class="l-meta">
+        <div class="l-title">${q.title}</div>
+        <div class="l-sub">${q.theme} · ${typeLabel}</div>
+      </div>
+      <div class="l-status">${icon}</div>
+      <div class="l-arrow">›</div>
+    </div>
+    <div class="list-body"></div>
+  `;
+  item.querySelector('.list-hdr').addEventListener('click',()=>item.classList.toggle('open'));
+  const body=item.querySelector('.list-body');
+
+  // Question
+  const qDiv=document.createElement('div');
+  qDiv.className='l-question';
+  qDiv.innerHTML=q.q;
+  body.appendChild(qDiv);
+
+  // Type label
+  const tl=document.createElement('div');
+  tl.className='l-type-label';
+  tl.textContent=typeLabel;
+  body.appendChild(tl);
+
+  // Type-specific
+  if(q.type==='qcm'){
+    const a=S.answers[q.id]||{};
+    const letters='ABCDEFGH';
+    const choicesDiv=document.createElement('div');
+    choicesDiv.className='l-choices';
+
+    q.choices.forEach((ch,i)=>{
+      const btn=document.createElement('div');
+      btn.className='l-choice';
+      btn.setAttribute('data-letter',letters[i]);
+      btn.innerHTML=ch.t;
+      if(done){
+        btn.classList.add('locked');
+        if(ch.ok) btn.classList.add('correct');
+        else if(a.picked && a.picked.includes(i)) btn.classList.add('wrong-picked');
+        else btn.classList.add('wrong-shown');
+      } else {
+        btn.addEventListener('click',()=>handleListQCMClick(q,i,choicesDiv,body,item));
+      }
+      choicesDiv.appendChild(btn);
+    });
+    body.appendChild(choicesDiv);
+
+    if(done){
+      q.choices.filter(c=>!c.ok && c.fb).forEach(ch=>{
+        const fb=document.createElement('div');
+        fb.className='l-feedback show info-fb';
+        fb.innerHTML=`<strong>${letters[q.choices.indexOf(ch)]}.</strong> ${ch.fb}`;
+        body.appendChild(fb);
+      });
+    }
+  }
+  else if(q.type==='vf'){
+    const a=S.answers[q.id]||{};
+    const vfDiv=document.createElement('div');
+    vfDiv.className='l-vf-btns';
+    ['Vrai','Faux'].forEach(label=>{
+      const btn=document.createElement('div');
+      btn.className='l-vf-btn '+(label==='Vrai'?'vrai':'faux');
+      btn.textContent=label==='Vrai'?'✔ Vrai':'✘ Faux';
+      if(done){
+        btn.classList.add('locked');
+        const isVrai=label==='Vrai';
+        if(a.choice===isVrai){ btn.classList.add(a.correct?'selected-ok':'selected-wrong'); }
+        else btn.classList.add('revealed');
+      } else {
+        btn.addEventListener('click',()=>{
+          const choice=label==='Vrai';
+          const correct=(choice===q.correct);
+          S.answers[q.id]={choice,done:true,correct};
+          updateScore();
+          const newItem=buildListItem(q);
+          newItem.classList.add('open');
+          item.replaceWith(newItem);
+        });
+      }
+      vfDiv.appendChild(btn);
+    });
+    body.appendChild(vfDiv);
+    if(done){
+      const fb=document.createElement('div');
+      const cor2=isCorrect(q);
+      fb.className='l-feedback show '+(cor2?'ok-fb':'wrong-fb');
+      fb.innerHTML=cor2?q.fbTrue:q.fbFalse;
+      body.appendChild(fb);
+    }
+  }
+  else if(q.type==='blanks'){
+    const a=S.answers[q.id]||{};
+    const blDiv=document.createElement('div');
+    blDiv.className='l-blanks';
+    const inputs=[];
+    q.blanks.forEach((bl,bi)=>{
+      const wrap2=document.createElement('div');
+      wrap2.className='l-blank-item';
+      const inp=document.createElement('input');
+      inp.type='text'; inp.placeholder='?';
+      if(done){ inp.value=a.vals?.[bi]||''; inp.disabled=true; inp.className=a.correct?'ok':'err'; }
+      wrap2.innerHTML=`<span>${bl.before}</span>`;
+      wrap2.appendChild(inp);
+      const aft=document.createElement('span');
+      aft.textContent=bl.after;
+      wrap2.appendChild(aft);
+      blDiv.appendChild(wrap2);
+      inputs.push(inp);
+    });
+    body.appendChild(blDiv);
+    if(!done){
+      const sub=document.createElement('button');
+      sub.className='l-blank-submit';
+      sub.textContent='Valider';
+      sub.addEventListener('click',()=>{
+        const vals=inputs.map(i=>i.value.trim().toLowerCase());
+        let allOk=true;
+        q.blanks.forEach((bl,i)=>{ if(!bl.answer.map(a=>a.toLowerCase()).includes(vals[i])) allOk=false; });
+        S.answers[q.id]={done:true,correct:allOk,vals};
+        updateScore();
+        const newItem=buildListItem(q);
+        newItem.classList.add('open');
+        item.replaceWith(newItem);
+      });
+      body.appendChild(sub);
+    } else {
+      const fb=document.createElement('div');
+      fb.className='l-feedback show '+(isCorrect(q)?'ok-fb':'wrong-fb');
+      fb.innerHTML=isCorrect(q)?'✔ Toutes les réponses sont correctes !':
+        'Réponses attendues : '+q.blanks.map(bl=>`<strong>${bl.answer[0]}</strong>`).join(', ');
+      body.appendChild(fb);
+    }
+  }
+  else if(q.type==='mark'){
+    const a=S.answers[q.id]||{};
+    const tokens=parseMTW(q.text);
+    const sel=new Set(a.selected||[]);
+    const textDiv=document.createElement('div');
+    textDiv.className='l-mtw-text';
+    tokens.forEach((tok,ti)=>{
+      const span=document.createElement('span');
+      span.className='w';
+      span.textContent=tok.text+' ';
+      if(done){
+        if(tok.isTarget && sel.has(ti))  span.classList.add('hit');
+        else if(tok.isTarget)             span.classList.add('unselected-target');
+        else if(sel.has(ti))              span.classList.add('miss');
+      } else {
+        span.classList.add('clickable');
+        if(sel.has(ti)) span.classList.add('selected');
+        span.addEventListener('click',()=>{
+          if(sel.has(ti)){ sel.delete(ti); span.classList.remove('selected'); }
+          else { sel.add(ti); span.classList.add('selected'); }
+          S.answers[q.id]={...(S.answers[q.id]||{}),selected:[...sel]};
+        });
+      }
+      textDiv.appendChild(span);
+    });
+    body.appendChild(textDiv);
+    if(!done){
+      const sub=document.createElement('button');
+      sub.className='l-mtw-submit';
+      sub.textContent='Valider';
+      sub.addEventListener('click',()=>{
+        const targetIdxs=new Set(tokens.map((t,i)=>t.isTarget?i:-1).filter(i=>i>=0));
+        const correct=[...sel].every(i=>targetIdxs.has(i)) && [...targetIdxs].every(i=>sel.has(i));
+        S.answers[q.id]={done:true,correct,selected:[...sel]};
+        updateScore();
+        const newItem=buildListItem(q);
+        newItem.classList.add('open');
+        item.replaceWith(newItem);
+      });
+      body.appendChild(sub);
+    } else {
+      const fb=document.createElement('div');
+      fb.className='l-feedback show '+(isCorrect(q)?'ok-fb':'wrong-fb');
+      const targets=tokens.filter(t=>t.isTarget).map(t=>t.text);
+      fb.innerHTML=isCorrect(q)?'✔ Tous les mots sont correctement surlignés !':
+        'Mots attendus : '+targets.map(t=>`<em>${t}</em>`).join(' · ');
+      body.appendChild(fb);
+    }
+  }
+
+  // Tags
+  const tagsDiv=document.createElement('div');
+  tagsDiv.className='l-tags';
+  q.tags.forEach(t=>{ const s=document.createElement('span');s.className='tag';s.textContent=t;tagsDiv.appendChild(s); });
+  body.appendChild(tagsDiv);
+
+  return item;
+}
+
+function handleListQCMClick(q,idx,choicesDiv,body,item){
+  if(!S.answers[q.id]) S.answers[q.id]={picked:[]};
+  const a=S.answers[q.id];
+  if(q.multi){
+    const pi=a.picked.indexOf(idx);
+    const btn=choicesDiv.children[idx];
+    if(pi>=0){ a.picked.splice(pi,1); btn.style.background=''; }
+    else { a.picked.push(idx); btn.style.background='#c5e4f8'; }
+    if(!choicesDiv.nextElementSibling?.classList?.contains('validate-multi')){
+      const vbtn=document.createElement('div');
+      vbtn.className='l-vf-btn vrai validate-multi';
+      vbtn.style.margin='6px 0';
+      vbtn.textContent='✔ Valider ma sélection';
+      vbtn.addEventListener('click',()=>{
+        const picked=a.picked||[];
+        const correctSet=new Set(q.choices.map((c,i)=>c.ok?i:-1).filter(i=>i>=0));
+        const correct=picked.length===correctSet.size && picked.every(i=>correctSet.has(i));
+        S.answers[q.id]={done:true,correct,picked};
+        updateScore();
+        const newItem=buildListItem(q);
+        newItem.classList.add('open');
+        item.replaceWith(newItem);
+      });
+      choicesDiv.after(vbtn);
+    }
+  } else {
+    a.picked=[idx];
+    const correctSet=new Set(q.choices.map((c,i)=>c.ok?i:-1).filter(i=>i>=0));
+    const correct=a.picked.length===correctSet.size && a.picked.every(i=>correctSet.has(i));
+    S.answers[q.id]={done:true,correct,picked:a.picked};
+    updateScore();
+    const newItem=buildListItem(q);
+    newItem.classList.add('open');
+    item.replaceWith(newItem);
+  }
+}
+
+// ═══════════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════════
+function render(){
+  if(S.view==='cards') buildCards();
+  else buildList();
+  updateScore();
+}
+
+// ═══════════════════════════════════════════════
+// EVENTS
+// ═══════════════════════════════════════════════
+document.querySelectorAll('.tab-btn').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('.tab-btn').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active');
+  S.view=b.dataset.view;
+  document.getElementById(`view-${S.view}`).classList.add('active');
+  render();
+}));
+
+document.querySelectorAll('.chip').forEach(c=>c.addEventListener('click',()=>{
+  document.querySelectorAll('.chip').forEach(x=>x.classList.remove('active'));
+  c.classList.add('active');
+  S.filter=c.dataset.f;
+  render();
+}));
+
+document.getElementById('reset-btn').addEventListener('click',()=>{
+  if(!confirm('Réinitialiser toutes vos réponses ?')) return;
+  S.answers={};
+  render();
+});
+
+render();
+</script>
+</body>
+</html>
